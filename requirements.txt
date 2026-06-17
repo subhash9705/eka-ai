@@ -1,0 +1,4 @@
+# Core runtime dependencies
+torch>=2.1.0
+sentencepiece>=0.1.99
+gdown>=4.7.3

@@ -1,0 +1,58 @@
+# Python byte-compiled / optimised
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# Test / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# Type checker
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Model files (large binaries — stored externally)
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.gguf
+*.model
+!eka_ai/py.typed
+
+# EKA model cache (users keep this locally)
+~/.cache/eka_ai/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Profiling
+*.prof

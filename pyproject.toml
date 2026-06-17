@@ -1,0 +1,130 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# ── Project metadata ──────────────────────────────────────────────────────────
+
+[project]
+name = "eka-ai"
+version = "1.0.0"
+description = "A 109M parameter historical language model trained from scratch on Project Gutenberg"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "EKA-AI Contributors" }]
+keywords = [
+    "language-model",
+    "historical",
+    "transformer",
+    "nlp",
+    "pytorch",
+    "text-generation",
+    "gutenberg",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+requires-python = ">=3.9"
+
+# ── Runtime dependencies ──────────────────────────────────────────────────────
+
+dependencies = [
+    "torch>=2.1.0",
+    "sentencepiece>=0.1.99",
+    "gdown>=4.7.3",
+]
+
+# ── Optional / extra dependencies ─────────────────────────────────────────────
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "black>=23.0",
+    "isort>=5.12",
+    "ruff>=0.1.0",
+    "mypy>=1.5",
+]
+docs = [
+    "sphinx>=7.0",
+    "sphinx-rtd-theme>=1.3",
+    "myst-parser>=2.0",
+]
+
+# ── URLs ──────────────────────────────────────────────────────────────────────
+
+[project.urls]
+Homepage = "https://github.com/eka-ai/eka-ai"
+Repository = "https://github.com/eka-ai/eka-ai"
+Issues = "https://github.com/eka-ai/eka-ai/issues"
+Changelog = "https://github.com/eka-ai/eka-ai/blob/main/CHANGELOG.md"
+
+# ── Entry points ──────────────────────────────────────────────────────────────
+
+[project.scripts]
+eka-chat = "eka_ai.generation:_cli_chat"
+
+# ── Tool configuration ────────────────────────────────────────────────────────
+
+[tool.setuptools]
+packages = ["eka_ai"]
+
+[tool.setuptools.package-data]
+eka_ai = ["py.typed"]
+
+# ── pytest ────────────────────────────────────────────────────────────────────
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+python_files = ["test_*.py"]
+
+# ── Coverage ──────────────────────────────────────────────────────────────────
+
+[tool.coverage.run]
+source = ["eka_ai"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
+# ── Black ─────────────────────────────────────────────────────────────────────
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+
+# ── isort ─────────────────────────────────────────────────────────────────────
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+# ── Ruff ──────────────────────────────────────────────────────────────────────
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501"]
+
+# ── mypy ──────────────────────────────────────────────────────────────────────
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true
+strict = false
+warn_return_any = true
+warn_unused_ignores = true
