@@ -17,6 +17,6 @@ from eka_ai.config import EKAConfig
 from eka_ai.generation import EKA
 
 __all__ = ["EKA", "EKAConfig"]
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 __author__ = "subhash9705"
 __license__ = "Apache-2.0"

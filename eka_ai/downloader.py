@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
+import time
+import urllib.request
 from pathlib import Path
 
 # ── Cache directory ───────────────────────────────────────────────────────────
@@ -41,12 +44,60 @@ GDRIVE_IDS: dict[str, str] = {
     "tokenizer.model": "1sgi5dOl2JXdBzMFTro-ojxxbFGe_IMTR",
 }
 
+#: Clean HTTPS hosting URLs for model weights (e.g. GitHub Releases / HuggingFace).
+#: Users can also override these by setting the EKA_MODEL_URL and EKA_TOKENIZER_URL env vars.
+CLEAN_URLS: dict[str, str] = {
+    "eka_model.pt": "https://github.com/subhash9705/eka-ai/releases/download/v1.0.2/eka_model.pt",
+    "tokenizer.model": "https://github.com/subhash9705/eka-ai/releases/download/v1.0.2/tokenizer.model",
+}
+
 #: Expected SHA-256 digests (first 16 hex chars) for integrity checking.
 #: Set to None to skip verification for a specific file.
 EXPECTED_SHA256_PREFIX: dict[str, str | None] = {
     "eka_model.pt": None,  # populate after upload
     "tokenizer.model": None,  # populate after upload
 }
+
+
+# ── Download helpers ──────────────────────────────────────────────────────────
+
+
+def _download_url(url: str, dest_path: Path) -> None:
+    """Download a file from a generic HTTPS URL with a custom progress bar."""
+    temp_path = dest_path.with_suffix(".tmp")
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        )
+        with urllib.request.urlopen(req) as response:
+            total_size = int(response.info().get('Content-Length', 0))
+            block_size = 1024 * 8
+            downloaded = 0
+            
+            with open(temp_path, "wb") as f:
+                t0 = time.perf_counter()
+                while True:
+                    buffer = response.read(block_size)
+                    if not buffer:
+                        break
+                    f.write(buffer)
+                    downloaded += len(buffer)
+                    
+                    if total_size > 0:
+                        percent = (downloaded / total_size) * 100
+                        speed = downloaded / (time.perf_counter() - t0 + 1e-9) / (1024 * 1024)
+                        sys.stdout.write(
+                            f"\rDownloading... {percent:.1f}% | "
+                            f"{downloaded / (1024 * 1024):.1f}M/{total_size / (1024 * 1024):.1f}M | "
+                            f"{speed:.1f} MB/s"
+                        )
+                        sys.stdout.flush()
+                print()
+    except Exception as e:
+        if temp_path.exists():
+            temp_path.unlink()
+        raise RuntimeError(f"Download failed from {url}: {e}") from e
 
 
 # ── Download helpers ──────────────────────────────────────────────────────────
@@ -86,7 +137,8 @@ def download_file(
     force: bool = False,
 ) -> Path:
     """
-    Download a single EKA model file from Google Drive.
+    Download a single EKA model file. Tries to download from clean public URLs
+    first, and falls back to a quiet Google Drive download if needed.
 
     Parameters
     ----------
@@ -128,33 +180,53 @@ def download_file(
                 flush=True,
             )
 
-    _check_gdown()
-    import gdown  # type: ignore[import]
-
-    file_id = GDRIVE_IDS[filename]
-    print(f"[EKA] Downloading {filename} from Google Drive …", flush=True)
-
     tmp_path = out_path.with_suffix(".tmp")
-    result = gdown.download(id=file_id, output=str(tmp_path), quiet=False)
+    
+    # 1. Resolve clean download URL (either env override or default CLEAN_URL)
+    env_var = "EKA_MODEL_URL" if filename == "eka_model.pt" else "EKA_TOKENIZER_URL"
+    url = os.environ.get(env_var) or CLEAN_URLS.get(filename)
+    
+    download_success = False
+    
+    if url:
+        print(f"[EKA] Downloading {filename} from {url} …", flush=True)
+        try:
+            _download_url(url, out_path)
+            download_success = True
+        except Exception as e:
+            print(f"[EKA] Public URL download failed, falling back to Google Drive: {e}", flush=True)
 
-    if not result or not tmp_path.exists():
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise RuntimeError(
-            f"Download of '{filename}' failed. "
-            "Check your internet connection and that the Google Drive link is public."
-        )
+    # 2. Fallback to Google Drive using gdown in quiet mode (does not expose drive redirect links)
+    if not download_success:
+        _check_gdown()
+        import gdown  # type: ignore[import]
+
+        file_id = GDRIVE_IDS[filename]
+        print(f"[EKA] Downloading {filename} from Google Drive (quiet mode) …", flush=True)
+        
+        result = gdown.download(id=file_id, output=str(tmp_path), quiet=True)
+        
+        if not result or not tmp_path.exists():
+            if tmp_path.exists():
+                tmp_path.unlink()
+            raise RuntimeError(
+                f"Download of '{filename}' failed. "
+                "Check your internet connection and that the Google Drive link is public."
+            )
 
     # Integrity check on the freshly downloaded file
+    target_path = out_path if download_success else tmp_path
     expected = EXPECTED_SHA256_PREFIX.get(filename)
-    if not _verify(tmp_path, expected):
-        tmp_path.unlink()
+    if not _verify(target_path, expected):
+        target_path.unlink()
         raise RuntimeError(
             f"Integrity check failed for '{filename}'. "
             "The downloaded file may be corrupt or the expected hash is stale."
         )
 
-    tmp_path.rename(out_path)
+    if not download_success:
+        tmp_path.rename(out_path)
+
     print(f"[EKA] Saved {filename} -> {out_path}", flush=True)
     return out_path
 

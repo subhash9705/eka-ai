@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eka-ai"
-version = "1.0.2"
+version = "1.0.3"
 description = "A 109M parameter historical language model trained from scratch on Project Gutenberg"
 readme = "README.md"
 license = { text = "Apache-2.0" }
