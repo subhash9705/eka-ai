@@ -367,8 +367,8 @@ If you use EKA-1 in your research, please cite:
 ```bibtex
 @misc{eka1_2024,
   title  = {{EKA-1}: A 109M Parameter Historical Language Model},
-  author = {EKA-AI Contributors},
-  year   = {2024},
+  author = {chvkrsubhash},
+  year   = {2026},
   url    = {https://github.com/eka-ai/eka-ai},
   note   = {Trained from scratch on Project Gutenberg}
 }
