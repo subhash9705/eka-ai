@@ -74,11 +74,18 @@ pip install -e ".[dev]"
 - sentencepiece ≥ 0.1.99
 - gdown ≥ 4.7.3
 
+> [!IMPORTANT]
+> **System Requirements & Recommendations:**
+> * **Memory (RAM)**: We recommend a minimum of **8 GB RAM** overall, with at least **3 GB of free RAM** dedicated to model execution.
+> * **Hardware Acceleration**: For faster response times and better usage, it is highly recommended to run this package on a **GPU**.
+> * **Cloud Notebooks**: We strongly recommend running this package in **Google Colab** or **Kaggle Notebooks** with GPU acceleration enabled for the fastest speeds.
+
 On first use, `EKA()` automatically downloads `eka_model.pt` (~424 MB) and `tokenizer.model` (~768 KB) to `~/.cache/eka_ai/`.
 
 > **Custom cache location:** Set the `EKA_CACHE_DIR` environment variable to override the default cache directory.
 
 ---
+
 
 ## Quick Start
 
