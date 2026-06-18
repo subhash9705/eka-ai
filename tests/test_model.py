@@ -7,23 +7,25 @@ needing the full 109M checkpoint or any file downloads.
 
 from __future__ import annotations
 
+import sys
+
 import pytest
 import torch
 
 from eka_ai.config import EKAConfig
 from eka_ai.model import (
+    CausalSelfAttention,
     EKA1Model,
     RMSNorm,
     RotaryEmbedding,
-    CausalSelfAttention,
     SwiGLUFFN,
     TransformerBlock,
-    _rotate_half,
     _apply_rotary,
+    _rotate_half,
 )
 
-
 # ── Tiny config for fast tests ────────────────────────────────────────────────
+
 
 @pytest.fixture()
 def tiny_config() -> EKAConfig:
@@ -48,6 +50,7 @@ def tiny_model(tiny_config) -> EKA1Model:
 
 # ── RMSNorm ───────────────────────────────────────────────────────────────────
 
+
 class TestRMSNorm:
     def test_output_shape(self):
         norm = RMSNorm(dim=64)
@@ -71,10 +74,11 @@ class TestRMSNorm:
 
 # ── Rotary Embeddings ─────────────────────────────────────────────────────────
 
+
 class TestRotaryEmbedding:
     def test_output_shapes_match_input(self):
         rope = RotaryEmbedding(head_dim=16, max_seq_len=64)
-        q = torch.randn(2, 4, 8, 16)   # (B, heads, T, head_dim)
+        q = torch.randn(2, 4, 8, 16)  # (B, heads, T, head_dim)
         k = torch.randn(2, 4, 8, 16)
         q_out, k_out = rope(q, k, seq_len=8)
         assert q_out.shape == q.shape
@@ -98,6 +102,7 @@ class TestRotaryEmbedding:
 
 
 # ── Attention ─────────────────────────────────────────────────────────────────
+
 
 class TestCausalSelfAttention:
     def test_output_shape(self, tiny_config):
@@ -126,6 +131,7 @@ class TestCausalSelfAttention:
 
 # ── SwiGLU FFN ────────────────────────────────────────────────────────────────
 
+
 class TestSwiGLUFFN:
     def test_output_shape(self, tiny_config):
         ffn = SwiGLUFFN(tiny_config)
@@ -138,6 +144,7 @@ class TestSwiGLUFFN:
 
 
 # ── TransformerBlock ──────────────────────────────────────────────────────────
+
 
 class TestTransformerBlock:
     def test_output_shape(self, tiny_config):
@@ -154,6 +161,7 @@ class TestTransformerBlock:
 
 
 # ── EKA1Model ─────────────────────────────────────────────────────────────────
+
 
 class TestEKA1Model:
     def test_output_shape(self, tiny_model, tiny_config):
@@ -201,6 +209,14 @@ class TestEKA1Model:
         logits = model(idx)
         assert logits.device.type == "cuda"
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason=(
+            "PyTorch's official Windows CPU wheels lack the bf16 matmul/SDPA "
+            "kernels that Linux and macOS builds ship with, so this raises "
+            "'not implemented for BFloat16' on Windows regardless of Python version."
+        ),
+    )
     def test_bfloat16_inference(self, tiny_config):
         """Model should run in bfloat16 without errors."""
         model = EKA1Model(tiny_config).to(torch.bfloat16).eval()

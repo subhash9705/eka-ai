@@ -9,12 +9,10 @@ from __future__ import annotations
 
 import hashlib
 import os
-import sys
 from pathlib import Path
-from typing import Optional
-
 
 # ── Cache directory ───────────────────────────────────────────────────────────
+
 
 def get_cache_dir() -> Path:
     """
@@ -45,13 +43,14 @@ GDRIVE_IDS: dict[str, str] = {
 
 #: Expected SHA-256 digests (first 16 hex chars) for integrity checking.
 #: Set to None to skip verification for a specific file.
-EXPECTED_SHA256_PREFIX: dict[str, Optional[str]] = {
-    "eka_model.pt": None,       # populate after upload
-    "tokenizer.model": None,    # populate after upload
+EXPECTED_SHA256_PREFIX: dict[str, str | None] = {
+    "eka_model.pt": None,  # populate after upload
+    "tokenizer.model": None,  # populate after upload
 }
 
 
 # ── Download helpers ──────────────────────────────────────────────────────────
+
 
 def _check_gdown() -> None:
     """Raise a helpful ImportError if gdown is not installed."""
@@ -73,7 +72,7 @@ def _sha256_prefix(path: Path, n_chars: int = 16) -> str:
     return h.hexdigest()[:n_chars]
 
 
-def _verify(path: Path, expected: Optional[str]) -> bool:
+def _verify(path: Path, expected: str | None) -> bool:
     """Return True if the file passes the integrity check (or check is skipped)."""
     if expected is None:
         return True
@@ -83,7 +82,7 @@ def _verify(path: Path, expected: Optional[str]) -> bool:
 
 def download_file(
     filename: str,
-    dest: Optional[Path] = None,
+    dest: Path | None = None,
     force: bool = False,
 ) -> Path:
     """
@@ -111,9 +110,7 @@ def download_file(
         If the download fails.
     """
     if filename not in GDRIVE_IDS:
-        raise ValueError(
-            f"Unknown file '{filename}'. Known files: {list(GDRIVE_IDS.keys())}"
-        )
+        raise ValueError(f"Unknown file '{filename}'. Known files: {list(GDRIVE_IDS.keys())}")
 
     if dest is None:
         dest = get_cache_dir()
@@ -163,7 +160,7 @@ def download_file(
 
 
 def download_all(
-    dest: Optional[Path] = None,
+    dest: Path | None = None,
     force: bool = False,
 ) -> dict[str, Path]:
     """

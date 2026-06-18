@@ -23,17 +23,17 @@ Usage
 
 from __future__ import annotations
 
+import sys
 import time
-from typing import Generator, Iterator, List, Optional, Tuple
+from collections.abc import Generator, Iterator
 
 import torch
 
 from eka_ai.config import EKAConfig
+from eka_ai.downloader import get_model_path, get_tokenizer_path
 from eka_ai.model import EKA1Model
 from eka_ai.tokenizer import EKATokenizer
-from eka_ai.downloader import get_model_path, get_tokenizer_path
 from eka_ai.utils import sample_token
-
 
 # ── Default system prompt ─────────────────────────────────────────────────────
 
@@ -44,6 +44,7 @@ _DEFAULT_SYSTEM_PROMPT = (
 
 
 # ── Generation result ─────────────────────────────────────────────────────────
+
 
 class GenerationResult:
     """
@@ -86,6 +87,7 @@ class GenerationResult:
 
 # ── Main class ────────────────────────────────────────────────────────────────
 
+
 class EKA:
     """
     EKA-1: a 109M parameter historical language model.
@@ -98,8 +100,9 @@ class EKA:
     device : str or torch.device, optional
         Inference device.  Defaults to ``"cuda"`` if available, else ``"cpu"``.
     dtype : torch.dtype, optional
-        Model dtype.  Defaults to ``torch.bfloat16`` on CPU and the checkpoint
-        dtype (usually ``float32`` or ``bfloat16``) on CUDA.
+        Model dtype.  Defaults to ``torch.bfloat16`` on CPU (``torch.float32``
+        on Windows, where PyTorch's CPU wheels lack bf16 kernels) and the
+        checkpoint dtype (usually ``float32`` or ``bfloat16``) on CUDA.
     model_path : str, optional
         Override the default cached model checkpoint path.
     tokenizer_path : str, optional
@@ -121,12 +124,12 @@ class EKA:
 
     def __init__(
         self,
-        device: Optional[str | torch.device] = None,
-        dtype: Optional[torch.dtype] = None,
-        model_path: Optional[str] = None,
-        tokenizer_path: Optional[str] = None,
+        device: str | torch.device | None = None,
+        dtype: torch.dtype | None = None,
+        model_path: str | None = None,
+        tokenizer_path: str | None = None,
         auto_download: bool = True,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         verbose: bool = True,
     ) -> None:
         # ── Resolve device ────────────────────────────────────────────────────
@@ -137,8 +140,14 @@ class EKA:
 
         # ── Resolve dtype ─────────────────────────────────────────────────────
         if dtype is None:
-            # bfloat16 on CPU saves memory and is fast; keep fp32/bf16 on CUDA
-            self.dtype = torch.bfloat16 if self.device.type == "cpu" else None
+            # bfloat16 on CPU saves memory and is fast on Linux/macOS, where
+            # PyTorch's CPU wheels ship bf16 matmul/SDPA kernels. The official
+            # Windows CPU wheels lack those kernels and raise a RuntimeError
+            # ("... not implemented for 'BFloat16'"), so fall back to fp32 there.
+            if self.device.type == "cpu":
+                self.dtype = torch.float32 if sys.platform == "win32" else torch.bfloat16
+            else:
+                self.dtype = None
         else:
             self.dtype = dtype
 
@@ -147,11 +156,11 @@ class EKA:
 
         # ── Resolve file paths ────────────────────────────────────────────────
         resolved_model = (
-            str(model_path) if model_path
-            else str(get_model_path(auto_download=auto_download))
+            str(model_path) if model_path else str(get_model_path(auto_download=auto_download))
         )
         resolved_tok = (
-            str(tokenizer_path) if tokenizer_path
+            str(tokenizer_path)
+            if tokenizer_path
             else str(get_tokenizer_path(auto_download=auto_download))
         )
 
@@ -194,7 +203,7 @@ class EKA:
     @torch.no_grad()
     def _generate_ids(
         self,
-        prompt_ids: List[int],
+        prompt_ids: list[int],
         max_new_tokens: int = 256,
         temperature: float = 0.8,
         top_k: int = 50,
@@ -207,15 +216,15 @@ class EKA:
         The context is truncated to ``context_length`` tokens at each step.
         """
         context_length = self.model.config.context_length
-        context: List[int] = list(prompt_ids)
+        context: list[int] = list(prompt_ids)
 
         for _ in range(max_new_tokens):
             # Truncate to model's context window
             window = context[-context_length:]
             idx = torch.tensor([window], dtype=torch.long, device=self.device)
 
-            logits = self.model(idx)          # (1, T, vocab_size)
-            next_logits = logits[0, -1, :]   # (vocab_size,)
+            logits = self.model(idx)  # (1, T, vocab_size)
+            next_logits = logits[0, -1, :]  # (vocab_size,)
 
             token_id = sample_token(
                 next_logits,
@@ -280,7 +289,7 @@ class EKA:
         # Ensure there is at least one token (BOS) so the model always has input
         if not prompt_ids:
             prompt_ids = [self.tokenizer.bos_id]
-        generated_ids: List[int] = []
+        generated_ids: list[int] = []
 
         t0 = time.perf_counter()
         for token_id in self._generate_ids(
@@ -308,8 +317,8 @@ class EKA:
     def chat(
         self,
         message: str,
-        history: Optional[List[Tuple[str, str]]] = None,
-        system_prompt: Optional[str] = None,
+        history: list[tuple[str, str]] | None = None,
+        system_prompt: str | None = None,
         max_new_tokens: int = 256,
         temperature: float = 0.8,
         top_k: int = 50,
@@ -355,7 +364,7 @@ class EKA:
         sys_prompt = system_prompt or self._system_prompt
 
         # Build chat messages list
-        messages: List[dict] = []
+        messages: list[dict] = []
         if history:
             for user_turn, assistant_turn in history:
                 messages.append({"role": "user", "content": user_turn})
@@ -368,7 +377,7 @@ class EKA:
             add_generation_prompt=True,
         )
         prompt_ids = self.tokenizer.encode(prompt)
-        generated_ids: List[int] = []
+        generated_ids: list[int] = []
 
         for token_id in self._generate_ids(
             prompt_ids,
@@ -452,8 +461,8 @@ class EKA:
     def stream_chat(
         self,
         message: str,
-        history: Optional[List[Tuple[str, str]]] = None,
-        system_prompt: Optional[str] = None,
+        history: list[tuple[str, str]] | None = None,
+        system_prompt: str | None = None,
         max_new_tokens: int = 256,
         temperature: float = 0.8,
         top_k: int = 50,
@@ -491,7 +500,7 @@ class EKA:
             Decoded text piece for each new token.
         """
         sys_prompt = system_prompt or self._system_prompt
-        messages: List[dict] = []
+        messages: list[dict] = []
         if history:
             for u, a in history:
                 messages.append({"role": "user", "content": u})
@@ -543,10 +552,7 @@ class EKA:
 
     def __repr__(self) -> str:
         n = self.model.num_parameters()
-        return (
-            f"EKA(params={n / 1e6:.1f}M, device={self.device!r}, "
-            f"dtype={self.dtype})"
-        )
+        return f"EKA(params={n / 1e6:.1f}M, device={self.device!r}, " f"dtype={self.dtype})"
 
     @property
     def config(self) -> EKAConfig:
@@ -564,6 +570,7 @@ class EKA:
             ``vocab_size``, ``n_layers``, ``d_model``, ``context_length``.
         """
         from eka_ai import __version__
+
         cfg = self.model.config
         return {
             "version": __version__,

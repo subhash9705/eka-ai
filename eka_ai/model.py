@@ -11,19 +11,16 @@ Decoder-only Transformer with:
 
 from __future__ import annotations
 
-import math
-from typing import Optional
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from eka_ai.config import EKAConfig
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Primitives
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class RMSNorm(nn.Module):
     """Root Mean Square Layer Normalization (no bias, no mean subtraction).
@@ -69,8 +66,8 @@ class RotaryEmbedding(nn.Module):
 
         # Pre-compute cos/sin tables: shape (1, 1, max_seq_len, head_dim)
         t = torch.arange(max_seq_len, dtype=torch.float32)
-        freqs = torch.outer(t, inv_freq)          # (max_seq_len, head_dim // 2)
-        emb = torch.cat([freqs, freqs], dim=-1)   # (max_seq_len, head_dim)
+        freqs = torch.outer(t, inv_freq)  # (max_seq_len, head_dim // 2)
+        emb = torch.cat([freqs, freqs], dim=-1)  # (max_seq_len, head_dim)
         self.register_buffer("cos_cache", emb.cos()[None, None, :, :], persistent=False)
         self.register_buffer("sin_cache", emb.sin()[None, None, :, :], persistent=False)
 
@@ -103,6 +100,7 @@ def _apply_rotary(
 # ─────────────────────────────────────────────────────────────────────────────
 # Attention
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class CausalSelfAttention(nn.Module):
     """
@@ -150,7 +148,9 @@ class CausalSelfAttention(nn.Module):
         # PyTorch SDPA — uses FlashAttention / memory-efficient / math kernel
         dropout_p = self.attn_dropout if self.training else 0.0
         out = F.scaled_dot_product_attention(
-            q, k, v,
+            q,
+            k,
+            v,
             attn_mask=None,
             dropout_p=dropout_p,
             is_causal=True,
@@ -164,6 +164,7 @@ class CausalSelfAttention(nn.Module):
 # ─────────────────────────────────────────────────────────────────────────────
 # Feed-Forward Network (SwiGLU)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class SwiGLUFFN(nn.Module):
     """
@@ -187,7 +188,7 @@ class SwiGLUFFN(nn.Module):
         hidden = (hidden + 63) // 64 * 64
 
         self.gate = nn.Linear(config.d_model, hidden, bias=config.bias)
-        self.up   = nn.Linear(config.d_model, hidden, bias=config.bias)
+        self.up = nn.Linear(config.d_model, hidden, bias=config.bias)
         self.down = nn.Linear(hidden, config.d_model, bias=config.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -198,15 +199,16 @@ class SwiGLUFFN(nn.Module):
 # Transformer Block
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TransformerBlock(nn.Module):
     """Single pre-norm decoder block: Attention → FFN."""
 
     def __init__(self, config: EKAConfig) -> None:
         super().__init__()
         self.norm1 = RMSNorm(config.d_model, config.norm_eps)
-        self.attn  = CausalSelfAttention(config)
+        self.attn = CausalSelfAttention(config)
         self.norm2 = RMSNorm(config.d_model, config.norm_eps)
-        self.ffn   = SwiGLUFFN(config)
+        self.ffn = SwiGLUFFN(config)
         self.dropout = nn.Dropout(config.dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -218,6 +220,7 @@ class TransformerBlock(nn.Module):
 # ─────────────────────────────────────────────────────────────────────────────
 # EKA-1 Model
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class EKA1Model(nn.Module):
     """
@@ -235,11 +238,11 @@ class EKA1Model(nn.Module):
         super().__init__()
         self.config = config
 
-        self.tok_emb   = nn.Embedding(config.vocab_size, config.d_model)
-        self.drop      = nn.Dropout(config.dropout)
-        self.blocks    = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layers)])
-        self.norm_out  = RMSNorm(config.d_model, config.norm_eps)
-        self.lm_head   = nn.Linear(config.d_model, config.vocab_size, bias=False)
+        self.tok_emb = nn.Embedding(config.vocab_size, config.d_model)
+        self.drop = nn.Dropout(config.dropout)
+        self.blocks = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layers)])
+        self.norm_out = RMSNorm(config.d_model, config.norm_eps)
+        self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
 
         # Weight tying: embedding and LM-head share the same parameter matrix
         self.lm_head.weight = self.tok_emb.weight
@@ -268,11 +271,11 @@ class EKA1Model(nn.Module):
         torch.Tensor
             Logits of shape ``(batch, seq_len, vocab_size)``.
         """
-        x = self.drop(self.tok_emb(idx))   # (B, T, d_model)
+        x = self.drop(self.tok_emb(idx))  # (B, T, d_model)
         for block in self.blocks:
             x = block(x)
         x = self.norm_out(x)
-        return self.lm_head(x)             # (B, T, vocab_size)
+        return self.lm_head(x)  # (B, T, vocab_size)
 
     def num_parameters(self, exclude_embeddings: bool = False) -> int:
         """Count trainable parameters."""
@@ -285,9 +288,9 @@ class EKA1Model(nn.Module):
     def from_checkpoint(
         cls,
         path: str,
-        device: Optional[torch.device] = None,
-        dtype: Optional[torch.dtype] = None,
-    ) -> "EKA1Model":
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> EKA1Model:
         """
         Load model from a ``.pt`` checkpoint file.
 
@@ -327,11 +330,7 @@ class EKA1Model(nn.Module):
         # Infer n_layers from state_dict if missing in checkpoint
         state = checkpoint["model"]
         if isinstance(state, dict):
-            layer_indices = [
-                int(k.split(".")[1])
-                for k in state.keys()
-                if k.startswith("blocks.")
-            ]
+            layer_indices = [int(k.split(".")[1]) for k in state.keys() if k.startswith("blocks.")]
             if layer_indices:
                 config.n_layers = max(layer_indices) + 1
 
@@ -343,9 +342,11 @@ class EKA1Model(nn.Module):
         real_missing = [k for k in missing if k != "lm_head.weight"]
         if real_missing:
             import warnings
+
             warnings.warn(f"Missing keys in checkpoint: {real_missing[:10]}", stacklevel=2)
         if unexpected:
             import warnings
+
             warnings.warn(f"Unexpected keys in checkpoint: {unexpected[:10]}", stacklevel=2)
 
         model.eval()

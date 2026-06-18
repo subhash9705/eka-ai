@@ -6,9 +6,8 @@ Matches the 109,529,856-parameter checkpoint trained on Project Gutenberg.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from typing import Optional
 import json
+from dataclasses import asdict, dataclass
 
 
 @dataclass
@@ -63,9 +62,7 @@ class EKAConfig:
 
     def __post_init__(self) -> None:
         if self.n_kv_heads > self.n_heads:
-            raise ValueError(
-                f"n_kv_heads ({self.n_kv_heads}) must be <= n_heads ({self.n_heads})"
-            )
+            raise ValueError(f"n_kv_heads ({self.n_kv_heads}) must be <= n_heads ({self.n_heads})")
         if self.d_model % self.n_heads != 0:
             raise ValueError(
                 f"d_model ({self.d_model}) must be divisible by n_heads ({self.n_heads})"
@@ -87,7 +84,7 @@ class EKAConfig:
         return json.dumps(self.to_dict(), indent=indent)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "EKAConfig":
+    def from_dict(cls, data: dict) -> EKAConfig:
         """
         Build a config from a raw dict, tolerating legacy key names used in
         older checkpoints.
@@ -116,6 +113,6 @@ class EKAConfig:
         return cls(**filtered)
 
     @classmethod
-    def from_json(cls, json_str: str) -> "EKAConfig":
+    def from_json(cls, json_str: str) -> EKAConfig:
         """Build config from a JSON string."""
         return cls.from_dict(json.loads(json_str))

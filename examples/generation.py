@@ -19,7 +19,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from eka_ai import EKA
 
-
 DEMO_PROMPTS = [
     "The Roman Empire fell because",
     "In the ancient city of Athens, the philosophers would gather",
@@ -39,9 +38,7 @@ def main() -> None:
     parser.add_argument("--temperature", type=float, default=0.8, help="Sampling temperature")
     parser.add_argument("--top_k", type=int, default=50, help="Top-k sampling cutoff")
     parser.add_argument("--top_p", type=float, default=0.95, help="Nucleus sampling threshold")
-    parser.add_argument(
-        "--rep_penalty", type=float, default=1.1, help="Repetition penalty"
-    )
+    parser.add_argument("--rep_penalty", type=float, default=1.1, help="Repetition penalty")
     parser.add_argument("--device", type=str, default=None, help="Device override (cpu / cuda)")
     args = parser.parse_args()
 

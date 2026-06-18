@@ -8,7 +8,6 @@ pipeline.
 from __future__ import annotations
 
 import os
-from typing import List, Optional, Union
 
 
 class EKATokenizer:
@@ -38,9 +37,7 @@ class EKATokenizer:
         try:
             import sentencepiece as spm  # type: ignore[import]
         except ImportError as exc:
-            raise ImportError(
-                "sentencepiece is required: pip install sentencepiece"
-            ) from exc
+            raise ImportError("sentencepiece is required: pip install sentencepiece") from exc
 
         self._sp = spm.SentencePieceProcessor()
         self._sp.Load(model_path)
@@ -52,7 +49,7 @@ class EKATokenizer:
         text: str,
         add_bos: bool = False,
         add_eos: bool = False,
-    ) -> List[int]:
+    ) -> list[int]:
         """
         Encode a string to a list of token IDs.
 
@@ -69,14 +66,14 @@ class EKATokenizer:
         -------
         List[int]
         """
-        ids: List[int] = self._sp.Encode(text, out_type=int)
+        ids: list[int] = self._sp.Encode(text, out_type=int)
         if add_bos:
             ids = [self.bos_id] + ids
         if add_eos:
             ids = ids + [self.eos_id]
         return ids
 
-    def decode(self, ids: List[int]) -> str:
+    def decode(self, ids: list[int]) -> str:
         """
         Decode a list of token IDs back to a string.
 
@@ -127,7 +124,7 @@ class EKATokenizer:
     def apply_chat_template(
         self,
         messages: list[dict],
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         add_generation_prompt: bool = True,
     ) -> str:
         """
@@ -149,7 +146,7 @@ class EKATokenizer:
         str
             Formatted prompt string ready for tokenization.
         """
-        parts: List[str] = []
+        parts: list[str] = []
 
         if system_prompt:
             parts.append(f"{self.SYSTEM_TOKEN}\n{system_prompt}\n")

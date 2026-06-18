@@ -2,8 +2,8 @@
 tests/test_config.py — Unit tests for EKAConfig.
 """
 
-import json
 import pytest
+
 from eka_ai.config import EKAConfig
 
 
@@ -79,10 +79,10 @@ class TestEKAConfigSerialization:
         """Legacy checkpoint key names should be normalised."""
         legacy = {
             "vocab_size": 32_000,
-            "n_layer": 12,       # legacy → n_layers
-            "n_head": 12,        # legacy → n_heads
-            "n_embd": 768,       # legacy → d_model
-            "block_size": 512,   # legacy → context_length
+            "n_layer": 12,  # legacy → n_layers
+            "n_head": 12,  # legacy → n_heads
+            "n_embd": 768,  # legacy → d_model
+            "block_size": 512,  # legacy → context_length
         }
         cfg = EKAConfig.from_dict(legacy)
         assert cfg.n_layers == 12

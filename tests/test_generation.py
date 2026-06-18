@@ -8,23 +8,27 @@ in-memory model.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+
 import pytest
 import torch
 
 from eka_ai.config import EKAConfig
-from eka_ai.model import EKA1Model
 from eka_ai.generation import EKA, GenerationResult
-
+from eka_ai.model import EKA1Model
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _make_tiny_model() -> EKA1Model:
     cfg = EKAConfig(
-        vocab_size=256, n_layers=2, n_heads=4, n_kv_heads=4,
-        d_model=64, d_ffn=256, context_length=32,
+        vocab_size=256,
+        n_layers=2,
+        n_heads=4,
+        n_kv_heads=4,
+        d_model=64,
+        d_ffn=256,
+        context_length=32,
     )
     return EKA1Model(cfg).eval()
 
@@ -41,9 +45,7 @@ def _make_mock_tokenizer(vocab_size: int = 256) -> MagicMock:
     tok.encode.side_effect = lambda text, **kwargs: [ord(c) % vocab_size for c in text[:16]]
     tok.decode.side_effect = lambda ids: "".join(chr(max(32, i % 95 + 32)) for i in ids)
     tok.decode_token.side_effect = lambda i: chr(max(32, i % 95 + 32))
-    tok.apply_chat_template.side_effect = lambda msgs, **kw: " ".join(
-        m["content"] for m in msgs
-    )
+    tok.apply_chat_template.side_effect = lambda msgs, **kw: " ".join(m["content"] for m in msgs)
     return tok
 
 
@@ -61,6 +63,7 @@ def _make_eka_instance() -> EKA:
 
 # ── GenerationResult ──────────────────────────────────────────────────────────
 
+
 class TestGenerationResult:
     def test_str_returns_text(self):
         r = GenerationResult(text="hello", tokens_generated=5, elapsed=1.0, device="cpu")
@@ -77,6 +80,7 @@ class TestGenerationResult:
 
 
 # ── EKA.generate() ────────────────────────────────────────────────────────────
+
 
 class TestEKAGenerate:
     def setup_method(self):
@@ -106,6 +110,7 @@ class TestEKAGenerate:
 
 # ── EKA.chat() ────────────────────────────────────────────────────────────────
 
+
 class TestEKAChat:
     def setup_method(self):
         self.model = _make_eka_instance()
@@ -129,6 +134,7 @@ class TestEKAChat:
 
 
 # ── EKA.stream() ─────────────────────────────────────────────────────────────
+
 
 class TestEKAStream:
     def setup_method(self):
@@ -157,6 +163,7 @@ class TestEKAStream:
 
 # ── EKA.info() ────────────────────────────────────────────────────────────────
 
+
 class TestEKAInfo:
     def setup_method(self):
         self.model = _make_eka_instance()
@@ -164,8 +171,13 @@ class TestEKAInfo:
     def test_info_keys(self):
         info = self.model.info()
         required_keys = {
-            "parameters", "device", "dtype", "vocab_size",
-            "n_layers", "d_model", "context_length",
+            "parameters",
+            "device",
+            "dtype",
+            "vocab_size",
+            "n_layers",
+            "d_model",
+            "context_length",
         }
         assert required_keys.issubset(info.keys())
 

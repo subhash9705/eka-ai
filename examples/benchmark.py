@@ -21,7 +21,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from eka_ai import EKA
 
-
 BENCHMARK_PROMPT = (
     "The ancient historians recorded that the great empires of the world "
     "rose and fell in cycles, each leaving behind a legacy of culture, "
@@ -57,8 +56,11 @@ def run_benchmark(
         latencies.append(elapsed)
         token_counts.append(result.tokens_generated)
         tps = result.tokens_generated / max(elapsed, 1e-9)
-        print(f"  Run {i + 1:2d}: {result.tokens_generated:4d} tokens  "
-              f"{tps:7.1f} tok/s  {elapsed:.2f}s", flush=True)
+        print(
+            f"  Run {i + 1:2d}: {result.tokens_generated:4d} tokens  "
+            f"{tps:7.1f} tok/s  {elapsed:.2f}s",
+            flush=True,
+        )
 
     throughputs = [t / max(l, 1e-9) for t, l in zip(token_counts, latencies)]
 

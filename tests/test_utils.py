@@ -8,13 +8,12 @@ import pytest
 import torch
 
 from eka_ai.utils import (
+    apply_repetition_penalty,
     apply_temperature,
     apply_top_k,
     apply_top_p,
-    apply_repetition_penalty,
     sample_token,
 )
-
 
 VOCAB_SIZE = 100
 
@@ -77,7 +76,7 @@ class TestApplyTopP:
 
     def test_top_p_removes_low_probability_tokens(self):
         logits = make_logits()
-        filtered_full = apply_top_k(logits, 0)  # noop
+        apply_top_k(logits, 0)  # noop
         filtered_nucleus = apply_top_p(logits, 0.5)
         # Nucleus should have fewer non-inf positions than the full vocab
         remaining = (filtered_nucleus != float("-inf")).sum()
